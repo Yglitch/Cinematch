@@ -1,10 +1,7 @@
 import streamlit as st
 import pandas as pd
-import joblib
-from surprise import Dataset, Reader
-from surprise.model_selection import train_test_split
 
-# -------------------- Load & Prepare --------------------
+# -------------------- Load Data --------------------
 st.set_page_config(page_title="CineMatch 🎬", layout="centered")
 st.title("🎥 CineMatch")
 
@@ -14,18 +11,22 @@ def load_data():
     ratings = pd.read_csv("ratings.csv")  # userId, movieId, rating
     return movies, ratings
 
-@st.cache_resource
-def load_model():
-    return joblib.load("svd_model.pkl")
-
 movies_df, ratings_df = load_data()
-model = load_model()
 
-# -------------------- User Input --------------------
-user_id = st.number_input("Enter your User ID:", min_value=1, max_value=ratings_df['userId'].max(), step=1)
+# -------------------- Prepare Data --------------------
+# Merge ratings with movies
+merged_df = pd.merge(ratings_df, movies_df, on="movieId")
 
-# Optional Genre Filter
+# Calculate average rating & count
+movie_stats = merged_df.groupby(['movieId', 'title', 'genres']).agg(
+    avg_rating=('rating', 'mean'),
+    rating_count=('rating', 'count')
+).reset_index()
 
+# Optional: Only show movies with at least X ratings
+movie_stats = movie_stats[movie_stats['rating_count'] >= 20]
+
+# -------------------- Genre Filter --------------------
 genre_list = sorted(set(
     genre
     for sublist in movies_df['genres'].fillna('').str.split('|')
@@ -33,42 +34,18 @@ genre_list = sorted(set(
 ))
 selected_genre = st.selectbox("Filter by Genre (optional):", ["All"] + genre_list)
 
-# -------------------- Recommendation Logic --------------------
-def get_unseen_movies(user_id, all_movie_ids, ratings_df):
-    rated = ratings_df[ratings_df['userId'] == user_id]['movieId'].tolist()
-    return [mid for mid in all_movie_ids if mid not in rated]
+if selected_genre != "All":
+    movie_stats = movie_stats[movie_stats['genres'].str.contains(selected_genre, na=False)]
 
-def recommend_movies(user_id, model, unseen_movies, top_n=10):
-    predictions = [(mid, model.predict(user_id, mid).est) for mid in unseen_movies]
-    return sorted(predictions, key=lambda x: x[1], reverse=True)[:top_n]
+# -------------------- Top Recommendations --------------------
+top_n = st.slider("How many recommendations do you want?", 5, 20, 10)
 
-# -------------------- Recommend Button --------------------
-if st.button("Get Recommendations"):
-    with st.spinner("Fetching your recommendations..."):
-        all_movie_ids = movies_df['movieId'].unique()
-        unseen = get_unseen_movies(user_id, all_movie_ids, ratings_df)
-        top_recs = recommend_movies(user_id, model, unseen, top_n=10)
+st.subheader(f"🎯 Top {top_n} Most Loved Movies:")
 
-        top_movie_ids = [mid for mid, _ in top_recs]
-        recommended_df = movies_df[movies_df['movieId'].isin(top_movie_ids)]
+top_movies = movie_stats.sort_values(by='avg_rating', ascending=False).head(top_n)
 
-        # Add estimated ratings
-        estimated_ratings = dict(top_recs)
-        recommended_df['Estimated Rating'] = recommended_df['movieId'].map(estimated_ratings)
-
-        # Optional genre filter
-        if selected_genre != "All":
-            recommended_df = recommended_df[recommended_df['genres'].str.contains(selected_genre)]
-
-        if recommended_df.empty:
-            st.warning("No recommendations found for this genre.")
-        else:
-            st.subheader("🎯 Top Movie Recommendations:")
-            for _, row in recommended_df.iterrows():
-                st.markdown(f"**🎬 {row['title']}**")
-                st.markdown(f"Genres: *{row['genres']}*")
-                st.markdown(f"⭐ Estimated Rating: {row['Estimated Rating']:.2f}")
-                st.markdown("---")
-
-invalid_genres = movies_df[~movies_df['genres'].apply(lambda x: isinstance(x, str))]
-print(invalid_genres)
+for _, row in top_movies.iterrows():
+    st.markdown(f"**🎬 {row['title']}**")
+    st.markdown(f"Genres: *{row['genres']}*")
+    st.markdown(f"⭐ Average Rating: {row['avg_rating']:.2f} ({int(row['rating_count'])} ratings)")
+    st.markdown("---")
