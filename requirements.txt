@@ -15,9 +15,13 @@ jsonschema==4.25.0
 jsonschema-specifications==2025.4.1
 MarkupSafe==3.0.2
 narwhals==1.47.1
+# Let pip pick a compatible numpy version
+numpy>=1.24.0
 packaging==25.0
-pandas==1.5.3
-pillow==2.0.0
+# Let pip pick pandas matching numpy
+pandas>=2.0.0
+# Use Pillow compatible with Streamlit
+pillow>=9.0.0,<12
 protobuf==6.31.1
 pyarrow==21.0.0
 pydeck==0.9.1
@@ -26,7 +30,10 @@ pytz==2025.2
 referencing==0.36.2
 requests==2.32.4
 rpds-py==0.26.0
-scipy==1.15.3
+# Optional: remove or replace scikit-surprise if it's problematic
+# scikit-surprise==1.1.4
+# scipy with compatible numpy
+scipy>=1.10.0  # newer version that aligns with numpy
 six==1.17.0
 smmap==5.0.2
 streamlit==1.47.0
