@@ -17,6 +17,7 @@
 ## 📁 Project Structure
 
 cinematch/
+
 ├── movies.csv # Movie metadata (movieId, title, genres)
 
 ├── ratings.csv # User ratings (userId, movieId, rating)
