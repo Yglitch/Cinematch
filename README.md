@@ -18,10 +18,15 @@
 
 cinematch/
 ├── movies.csv # Movie metadata (movieId, title, genres)
+
 ├── ratings.csv # User ratings (userId, movieId, rating)
+
 ├── svd_model.pkl # Pre-trained SVD model (optional for personalization)
+
 ├── app.py # Main Streamlit application
+
 ├── requirements.txt # Project dependencies
+
 └── README.md # You're here!
 
 
